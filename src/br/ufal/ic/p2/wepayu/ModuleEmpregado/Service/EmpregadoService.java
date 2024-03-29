@@ -68,72 +68,82 @@ public class EmpregadoService {
         validaGetAtributoEmpregado(id, atributo);
         Empregado empregado = listaEmpregados.get(id);
 
-        if (id.isEmpty())
-            throw new IDinvalido("Identificacao do empregado nao pode ser nula.");
-
-        if (empregado == null)
+        if(id.isEmpty() ){
+            throw new EmpregadoNaoExiste("Identificacao do empregado nao pode ser nula.");
+        }if (empregado == null) {
             throw new EmpregadoNaoExiste("Empregado nao existe.");
-
-        if (atributo.equals("nome")) {
-            return empregado.getNome();
         }
 
-        if (atributo.equals("endereco")) {
-            return empregado.getEndereco();
-        }
-
-        if (atributo.equals("tipo")) {
-            return empregado.getTipo();
-        }
-
-        if (atributo.equals("salario")) {
-            String salarioStr = empregado.getSalario();
-            if (isNumeric(salarioStr)) {
-                double salario = Double.parseDouble(salarioStr);
-                if (salario % 1 == 0) { // se for inteiro
-                    return String.format("%.0f,00", salario);
-                } else { //se for decimal
-                    return String.format("%.2f", salario).replace(".", ",");
+        switch (atributo.toLowerCase()) {
+            case "nome":
+                return empregado.getNome();
+            case "endereco":
+                return empregado.getEndereco();
+            case "tipo":
+                return empregado.getTipo();
+            case "salario":
+                return formatarSalario(empregado.getSalario());
+            case "sindicalizado":
+                return Boolean.toString(empregado.getIsSindicalizado());
+            case "comissao":
+                return obterComissao(empregado);
+            case "metodopagamento":
+                return empregado.getMetodoDePagamento();
+            case "idsindicato":
+                return obterIdSindicato(empregado);
+            case "taxasindical":
+                return obterTaxaSindical(empregado);
+            default:
+                if (atributo.equalsIgnoreCase("banco") || atributo.equalsIgnoreCase("agencia") || atributo.equalsIgnoreCase("contacorrente") || atributo.equalsIgnoreCase("valor")) {
+                    return obterInformacaoBancaria(empregado, atributo);
+                } else {
+                    throw new AtributoInvalido("Atributo nao existe.");
                 }
-            } else {
-                return salarioStr; // Retornar a string original se não for um número
+        }
+    }
+
+    private String formatarSalario(String salarioStr) {
+        if (isNumeric(salarioStr)) {
+            double salario = Double.parseDouble(salarioStr);
+            if (salario % 1 == 0) { // se for inteiro
+                return String.format("%.0f,00", salario);
+            } else { //se for decimal
+                return String.format("%.2f", salario).replace(".", ",");
             }
+        } else {
+            return salarioStr; // Retornar a string original se não for um número
         }
+    }
 
-        if (atributo.equals("sindicalizado")) {
-            if (empregado.getIsSindicalizado())
-                return "true";
-            else
-                return "false";
-        }
-
-        if (atributo.equals("comissao")) {
-            if (empregado.getTipo().equalsIgnoreCase("comissionado"))
-                return empregado.getComissao();
-
+    private String obterComissao(Empregado empregado) throws EmpregadonaoEhComissionado {
+        if (empregado.getTipo().equalsIgnoreCase("comissionado")) {
+            return empregado.getComissao();
+        } else {
             throw new EmpregadonaoEhComissionado("Empregado nao eh comissionado.");
         }
+    }
 
-        if (atributo.equals("metodoPagamento")) {
-           return empregado.getMetodoDePagamento();
+    private String obterIdSindicato(Empregado empregado) throws EmpregadoNaoEhSindicalizado {
+        if (!empregado.getIsSindicalizado()) {
+            throw new EmpregadoNaoEhSindicalizado("Empregado nao eh sindicalizado.");
         }
+        MembroSindicato sindicalista = listaDeSindicalizados.get(empregado.getId());
+        return sindicalista.getIdSindical();
+    }
 
-        if (atributo.equalsIgnoreCase("idSindicato") || atributo.equalsIgnoreCase("taxaSindical")) {
-            if(!empregado.getIsSindicalizado())
-                throw new EmpregadoNaoEhSindicalizado("Empregado nao eh sindicalizado.");
-
-            MembroSindicato sindicalista = listaDeSindicalizados.get(id);
-            if (atributo.equals("idSindicato")) return sindicalista.getIdSindical();
-            if (atributo.equals("taxaSindical")) return sindicalista.getTaxaSindical();
+    private String obterTaxaSindical(Empregado empregado) throws EmpregadoNaoEhSindicalizado {
+        if (!empregado.getIsSindicalizado()) {
+            throw new EmpregadoNaoEhSindicalizado("Empregado nao eh sindicalizado.");
         }
+        MembroSindicato sindicalista = listaDeSindicalizados.get(empregado.getId());
+        return sindicalista.getTaxaSindical();
+    }
 
-        if (atributo.equalsIgnoreCase("banco") || atributo.equalsIgnoreCase("agencia") || atributo.equalsIgnoreCase("contaCorrente") || atributo.equalsIgnoreCase("valor"))
-            if (!empregado.isRecebedorPorBanco())
-                throw new MetodoDePagamentoInvalido("Empregado nao recebe em banco.");
-            else
-                return empregado.getInformacaoBancaria(atributo);
-
-        throw new AtributoInvalido("Atributo nao existe.");
+    private String obterInformacaoBancaria(Empregado empregado, String atributo) throws MetodoDePagamentoInvalido {
+        if (!empregado.isRecebedorPorBanco()) {
+            throw new MetodoDePagamentoInvalido("Empregado nao recebe em banco.");
+        }
+        return empregado.getInformacaoBancaria(atributo);
     }
 
     //UPDATE
@@ -143,41 +153,61 @@ public class EmpregadoService {
         if (empregadoAtualizado == null) {
             throw new EmpregadoNaoExiste("Empregado não encontrado");
         }
-        if (atributo.equalsIgnoreCase("nome")) {
-            empregadoAtualizado.setNome(valor);
-        } else if (atributo.equalsIgnoreCase("endereco")) {
-            empregadoAtualizado.setEndereco(valor);
-        } else if (atributo.equalsIgnoreCase("tipo")) {
-            empregadoAtualizado.setTipo(valor);
-        } else if (atributo.equalsIgnoreCase("salario")) {
-            empregadoAtualizado.setSalario(valor);
-        }
-        else if (atributo.equalsIgnoreCase("comissao")){
-            if (valor.equalsIgnoreCase("true")) {
-                empregadoAtualizado.setComissao(valor);
-                empregadoAtualizado.setIsComissionado(true);
-            }
-        }
 
-        else if (atributo.equalsIgnoreCase("metodoPagamento")){
-            if (!valor.equalsIgnoreCase("correios") && !valor.equalsIgnoreCase("emMaos") && !valor.equalsIgnoreCase("banco"))
-                throw new MetodoDePagamentoInvalido("Metodo de pagamento invalido.");
-            if (!valor.equalsIgnoreCase("banco"))
-                empregadoAtualizado.setisRecebedorPorBanco(false);
-            empregadoAtualizado.setMetodoDePagamento(valor);
-
+        switch (atributo.toLowerCase()) {
+            case "nome":
+                empregadoAtualizado.setNome(valor);
+                break;
+            case "endereco":
+                empregadoAtualizado.setEndereco(valor);
+                break;
+            case "tipo":
+                empregadoAtualizado.setTipo(valor);
+                break;
+            case "salario":
+                empregadoAtualizado.setSalario(valor);
+                break;
+            case "comissao":
+                alteraComissao(empregadoAtualizado, valor);
+                break;
+            case "metodopagamento":
+                alteraMetodoPagamento(empregadoAtualizado, valor);
+                break;
+            case "sindicalizado":
+                alteraSindicalizado(empregadoAtualizado, valor);
+                break;
+            default:
+                throw new AtributoInvalido("Atributo não existe.");
         }
-        else if (atributo.equalsIgnoreCase("sindicalizado")){
-            if (valor.equalsIgnoreCase("true"))
-                empregadoAtualizado.SetisSindicalizado(true);
-            if (valor.equalsIgnoreCase("false"))
-                empregadoAtualizado.SetisSindicalizado(false);
-            else
-                throw new ValorInvalido("Valor invalido");
-        }
-
 
         listaEmpregados.put(id, empregadoAtualizado);
+    }
+
+    private static void alteraComissao(Empregado empregado, String valor) throws ValorInvalido {
+        if (valor.equalsIgnoreCase("true")) {
+            empregado.setComissao(valor);
+            empregado.setIsComissionado(true);
+        }
+    }
+
+    private static void alteraMetodoPagamento(Empregado empregado, String valor) throws MetodoDePagamentoInvalido {
+        if (!valor.equalsIgnoreCase("correios") && !valor.equalsIgnoreCase("emMaos") && !valor.equalsIgnoreCase("banco")) {
+            throw new MetodoDePagamentoInvalido("Metodo de pagamento invalido.");
+        }
+        if (!valor.equalsIgnoreCase("banco")) {
+            empregado.setisRecebedorPorBanco(false);
+        }
+        empregado.setMetodoDePagamento(valor);
+    }
+
+    private static void alteraSindicalizado(Empregado empregado, String valor) throws ValorInvalido {
+        if (valor.equalsIgnoreCase("true")) {
+            empregado.SetisSindicalizado(true);
+        } else if (valor.equalsIgnoreCase("false")) {
+            empregado.SetisSindicalizado(false);
+        } else {
+            throw new ValorInvalido("Valor inválido");
+        }
     }
     public static void AlteraMetodoPagamentoEmpregado(String id, String atributo, String valor1, String banco, String agencia, String contaCorrente) throws Exception {
         validaBanco(id,atributo,valor1,banco,agencia,contaCorrente);

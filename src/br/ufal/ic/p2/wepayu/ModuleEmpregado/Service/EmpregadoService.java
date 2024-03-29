@@ -1,8 +1,13 @@
 package br.ufal.ic.p2.wepayu.ModuleEmpregado.Service;
 import br.ufal.ic.p2.wepayu.Core.Exceptions.*;
+import br.ufal.ic.p2.wepayu.ModuleEmpregado.Service.TiposEmpregados.ComissionadoService;
 import br.ufal.ic.p2.wepayu.ModuleEmpregado.model.Empregado;
 import br.ufal.ic.p2.wepayu.ModuleEmpregado.model.InformacoesBancarias;
+import br.ufal.ic.p2.wepayu.ModuleFolhaDePagamento.Service.FolhaService;
 import br.ufal.ic.p2.wepayu.ModuleSindicato.Classes.MembroSindicato;
+import br.ufal.ic.p2.wepayu.ModuleSindicato.Service.SindicatoService;
+import br.ufal.ic.p2.wepayu.Utils.Utils;
+
 import java.util.UUID;
 
 import static br.ufal.ic.p2.wepayu.ModuleCartaoDePonto.Service.ServiceCartaoDePonto.CriaCartao;
@@ -17,14 +22,6 @@ public class EmpregadoService {
     public String GerarId(){
         String id = UUID.randomUUID().toString();
         return id;
-    }
-    public static boolean isNumeric(String str) {
-        try {
-            Double.parseDouble(str);
-            return true;
-        } catch (NumberFormatException e) {
-            return false;
-        }
     }
 
     //Create
@@ -82,68 +79,24 @@ public class EmpregadoService {
             case "tipo":
                 return empregado.getTipo();
             case "salario":
-                return formatarSalario(empregado.getSalario());
+                return Utils.formatarSalario(empregado.getSalario());
             case "sindicalizado":
                 return Boolean.toString(empregado.getIsSindicalizado());
             case "comissao":
-                return obterComissao(empregado);
+                return ComissionadoService.obterComissao(empregado);
             case "metodopagamento":
                 return empregado.getMetodoDePagamento();
             case "idsindicato":
-                return obterIdSindicato(empregado);
+                return SindicatoService.obterIdSindicato(empregado);
             case "taxasindical":
-                return obterTaxaSindical(empregado);
+                return SindicatoService.obterTaxaSindical(empregado);
             default:
                 if (atributo.equalsIgnoreCase("banco") || atributo.equalsIgnoreCase("agencia") || atributo.equalsIgnoreCase("contacorrente") || atributo.equalsIgnoreCase("valor")) {
-                    return obterInformacaoBancaria(empregado, atributo);
+                    return FolhaService.obterInformacaoBancaria(empregado, atributo);
                 } else {
                     throw new AtributoInvalido("Atributo nao existe.");
                 }
         }
-    }
-
-    private String formatarSalario(String salarioStr) {
-        if (isNumeric(salarioStr)) {
-            double salario = Double.parseDouble(salarioStr);
-            if (salario % 1 == 0) { // se for inteiro
-                return String.format("%.0f,00", salario);
-            } else { //se for decimal
-                return String.format("%.2f", salario).replace(".", ",");
-            }
-        } else {
-            return salarioStr; // Retornar a string original se não for um número
-        }
-    }
-
-    private String obterComissao(Empregado empregado) throws EmpregadonaoEhComissionado {
-        if (empregado.getTipo().equalsIgnoreCase("comissionado")) {
-            return empregado.getComissao();
-        } else {
-            throw new EmpregadonaoEhComissionado("Empregado nao eh comissionado.");
-        }
-    }
-
-    private String obterIdSindicato(Empregado empregado) throws EmpregadoNaoEhSindicalizado {
-        if (!empregado.getIsSindicalizado()) {
-            throw new EmpregadoNaoEhSindicalizado("Empregado nao eh sindicalizado.");
-        }
-        MembroSindicato sindicalista = listaDeSindicalizados.get(empregado.getId());
-        return sindicalista.getIdSindical();
-    }
-
-    private String obterTaxaSindical(Empregado empregado) throws EmpregadoNaoEhSindicalizado {
-        if (!empregado.getIsSindicalizado()) {
-            throw new EmpregadoNaoEhSindicalizado("Empregado nao eh sindicalizado.");
-        }
-        MembroSindicato sindicalista = listaDeSindicalizados.get(empregado.getId());
-        return sindicalista.getTaxaSindical();
-    }
-
-    private String obterInformacaoBancaria(Empregado empregado, String atributo) throws MetodoDePagamentoInvalido {
-        if (!empregado.isRecebedorPorBanco()) {
-            throw new MetodoDePagamentoInvalido("Empregado nao recebe em banco.");
-        }
-        return empregado.getInformacaoBancaria(atributo);
     }
 
     //UPDATE
@@ -168,13 +121,13 @@ public class EmpregadoService {
                 empregadoAtualizado.setSalario(valor);
                 break;
             case "comissao":
-                alteraComissao(empregadoAtualizado, valor);
+                ComissionadoService.alteraComissao(empregadoAtualizado, valor);
                 break;
             case "metodopagamento":
-                alteraMetodoPagamento(empregadoAtualizado, valor);
+                FolhaService.alteraMetodoPagamento(empregadoAtualizado, valor);
                 break;
             case "sindicalizado":
-                alteraSindicalizado(empregadoAtualizado, valor);
+                SindicatoService.alteraSindicalizado(empregadoAtualizado, valor);
                 break;
             default:
                 throw new AtributoInvalido("Atributo não existe.");
@@ -182,84 +135,6 @@ public class EmpregadoService {
 
         listaEmpregados.put(id, empregadoAtualizado);
     }
-
-    private static void alteraComissao(Empregado empregado, String valor) throws ValorInvalido {
-        if (valor.equalsIgnoreCase("true")) {
-            empregado.setComissao(valor);
-            empregado.setIsComissionado(true);
-        }
-    }
-
-    private static void alteraMetodoPagamento(Empregado empregado, String valor) throws MetodoDePagamentoInvalido {
-        if (!valor.equalsIgnoreCase("correios") && !valor.equalsIgnoreCase("emMaos") && !valor.equalsIgnoreCase("banco")) {
-            throw new MetodoDePagamentoInvalido("Metodo de pagamento invalido.");
-        }
-        if (!valor.equalsIgnoreCase("banco")) {
-            empregado.setisRecebedorPorBanco(false);
-        }
-        empregado.setMetodoDePagamento(valor);
-    }
-
-    private static void alteraSindicalizado(Empregado empregado, String valor) throws ValorInvalido {
-        if (valor.equalsIgnoreCase("true")) {
-            empregado.SetisSindicalizado(true);
-        } else if (valor.equalsIgnoreCase("false")) {
-            empregado.SetisSindicalizado(false);
-        } else {
-            throw new ValorInvalido("Valor inválido");
-        }
-    }
-    public static void AlteraMetodoPagamentoEmpregado(String id, String atributo, String valor1, String banco, String agencia, String contaCorrente) throws Exception {
-        validaBanco(id,atributo,valor1,banco,agencia,contaCorrente);
-        Empregado empregadoAtualizado = listaEmpregados.get(id);
-        InformacoesBancarias infosBancariasEmpregado = new InformacoesBancarias(valor1,banco,agencia,contaCorrente);
-        empregadoAtualizado.SetInformacoesBancarias(infosBancariasEmpregado);
-        empregadoAtualizado.setMetodoDePagamento("banco");
-        empregadoAtualizado.setisRecebedorPorBanco(true);
-        listaEmpregados.put(id,empregadoAtualizado);
-    }
-    public static void AlteraEmpregadoComissionado(String id, String atributo, String valor) throws Exception {
-        Empregado empregado = listaEmpregados.get(id);
-        if (empregado.getTipo().equals("comissionado")){
-            empregado.setComissao(valor);
-            listaEmpregados.put(id,empregado);
-        }
-        else
-            throw new EmpregadonaoEhComissionado("Empregado nao eh comissionado.");
-    }
-    public static void AlteraEmpregadoSindicato(String id, String atributo, String valor) throws Exception {
-        Empregado empregado = listaEmpregados.get(id);
-        if (valor.equalsIgnoreCase("false"))
-            empregado.SetisSindicalizado(false);
-
-        if (valor.equalsIgnoreCase("true"))
-            empregado.SetisSindicalizado(true);
-
-        if (!empregado.getTipo().equalsIgnoreCase("comissionado"))
-            throw new EmpregadoNaoEhSindicalizado("Empregado nao eh sindicalizado.");
-    }
-    public static void ComissionaEmpregado(String id, String atributo, String valor,String comissao) throws  Exception{
-        Empregado empregado = listaEmpregados.get(id);
-        if (valor.equalsIgnoreCase("comissionado")){
-                empregado.setTipo("comissionado");
-                empregado.setComissao(comissao);
-                listaEmpregados.put(id,empregado);
-        }
-            if (valor.equalsIgnoreCase("horista")){
-                empregado.setTipo("horista");
-                empregado.setSalario(comissao);
-            }
-    }
-
-    public static void SindicalizaEmpregado(String id, String atributo, String valor, String idSindical, String taxaSindical) throws Exception {
-        validaSindicalizacao(id,atributo,valor,idSindical,taxaSindical);
-        alteraEmpregadoValidation(idSindical);
-        Empregado empregado = listaEmpregados.get(id);
-        empregado.SetisSindicalizado(true);
-        criaVinculoSindical(id,idSindical,taxaSindical);
-        listaEmpregados.put(id,empregado);
-    }
-
 
     //DELETE
     public void removerEmpregado(String id) throws Exception {

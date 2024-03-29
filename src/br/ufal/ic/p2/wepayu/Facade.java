@@ -1,4 +1,7 @@
 package br.ufal.ic.p2.wepayu;
+import br.ufal.ic.p2.wepayu.ModuleEmpregado.Service.TiposEmpregados.ComissionadoService;
+import br.ufal.ic.p2.wepayu.ModuleSindicato.Service.SindicatoService;
+
 import static br.ufal.ic.p2.wepayu.ModuleEmpregado.Service.EmpregadoService.*;
 import static br.ufal.ic.p2.wepayu.ModuleFolhaDePagamento.Service.FolhaService.geraBalancoTotal;
 import static br.ufal.ic.p2.wepayu.ModuleCartaoDePonto.Service.ServiceCartaoDePonto.*;
@@ -54,9 +57,9 @@ public class Facade {
     }
     public void alteraEmpregado(String id, String atributo, String valor) throws Exception {
         if (atributo.equalsIgnoreCase("sindicato"))
-            AlteraEmpregadoSindicato(id, atributo, valor);
+            SindicatoService.AlteraEmpregadoSindicato(id, atributo, valor);
         if (atributo.equalsIgnoreCase("comissao"))
-            AlteraEmpregadoComissionado(id,atributo,valor);
+            ComissionadoService.AlteraEmpregadoComissionado(id,atributo,valor);
 
         AlteraDefaultAtributoEmpregado(id, atributo, valor);
     }
@@ -67,15 +70,15 @@ public class Facade {
 
     //Altera Metodo de pagamento do empregado
     public void alteraEmpregado(String id, String atributo, String valor1, String banco, String agencia, String contaCorrente) throws Exception {
-        AlteraMetodoPagamentoEmpregado(id, atributo,  valor1,  banco,  agencia,contaCorrente);
+        ComissionadoService.AlteraMetodoPagamentoEmpregado(id, atributo,  valor1,  banco,  agencia,contaCorrente);
     }
     //Torna empregado sindicalizado
     public void alteraEmpregado(String id, String atributo, String valor, String idSindical, String taxaSindical) throws Exception {
-        SindicalizaEmpregado(id, atributo, valor, idSindical, taxaSindical);
+        SindicatoService.SindicalizaEmpregado(id, atributo, valor, idSindical, taxaSindical);
     }
     //Torna empregado Comissionado
     public void alteraEmpregado(String id, String tipo, String valor, String valorComissao) throws Exception {
-            ComissionaEmpregado(id,tipo,valor, valorComissao);
+            ComissionadoService.ComissionaEmpregado(id,tipo,valor, valorComissao);
     }
 
 

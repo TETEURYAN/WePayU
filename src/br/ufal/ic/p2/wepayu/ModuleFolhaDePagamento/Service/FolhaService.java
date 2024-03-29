@@ -1,7 +1,9 @@
 package br.ufal.ic.p2.wepayu.ModuleFolhaDePagamento.Service;
 
+import br.ufal.ic.p2.wepayu.Core.Exceptions.MetodoDePagamentoInvalido;
 import br.ufal.ic.p2.wepayu.ModuleCartaoDePonto.Classes.CartaoDePonto;
 import br.ufal.ic.p2.wepayu.ModuleCartaoDePonto.Classes.Horas;
+import br.ufal.ic.p2.wepayu.ModuleEmpregado.model.Empregado;
 import br.ufal.ic.p2.wepayu.ModuleVendas.Model.Vendas;
 
 import java.text.DecimalFormat;
@@ -84,4 +86,22 @@ public class FolhaService {
         DecimalFormat formato = new DecimalFormat("#,##0,00");
         return formato.format(valorTotal);
     }
+
+    public static void alteraMetodoPagamento(Empregado empregado, String valor) throws MetodoDePagamentoInvalido {
+        if (!valor.equalsIgnoreCase("correios") && !valor.equalsIgnoreCase("emMaos") && !valor.equalsIgnoreCase("banco")) {
+            throw new MetodoDePagamentoInvalido("Metodo de pagamento invalido.");
+        }
+        if (!valor.equalsIgnoreCase("banco")) {
+            empregado.setisRecebedorPorBanco(false);
+        }
+        empregado.setMetodoDePagamento(valor);
+    }
+
+    public static String obterInformacaoBancaria(Empregado empregado, String atributo) throws MetodoDePagamentoInvalido {
+        if (!empregado.isRecebedorPorBanco()) {
+            throw new MetodoDePagamentoInvalido("Empregado nao recebe em banco.");
+        }
+        return empregado.getInformacaoBancaria(atributo);
+    }
+
 }
